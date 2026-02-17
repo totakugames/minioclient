@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/services.dart';
@@ -46,6 +48,8 @@ class S3ManagerApp extends StatefulWidget {
 }
 
 class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
+  final SystemTray _systemTray = SystemTray();
+
   @override
   void initState() {
     super.initState();
@@ -56,43 +60,63 @@ class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
   @override
   void dispose() {
     windowManager.removeListener(this);
+    _systemTray.destroy();
     super.dispose();
   }
 
-  Future<void> _initSystemTray() async {
-    final systemTray = SystemTray();
-    await systemTray.initSystemTray(
-      iconPath: 'assets/app_icon.png',
-      toolTip: 'MinIO Desktop Client',
-    );
+  String _getTrayIconPath() {
+    if (Platform.isWindows) {
+      return 'assets/app_icon.ico';
+    } else if (Platform.isMacOS) {
+      return '../assets/app_icon.png';
+    } else {
+      return 'assets/app_icon.png';
+    }
+  }
 
-    final menu = Menu();
-    await menu.buildFrom([
-      MenuItemLabel(
-        label: 'Show',
-        onClicked: (_) async {
+  Future<void> _initSystemTray() async {
+    try {
+      print('Initializing system tray...');
+      await _systemTray.initSystemTray(
+        iconPath: _getTrayIconPath(),
+        toolTip: 'MinIO Desktop Client',
+      );
+      print('System tray initialized successfully');
+
+      final menu = Menu();
+      await menu.buildFrom([
+        MenuItemLabel(
+          label: 'Show',
+          onClicked: (_) async {
+            await windowManager.show();
+            await windowManager.focus();
+          },
+        ),
+        MenuSeparator(),
+        MenuItemLabel(
+          label: 'Quit',
+          onClicked: (_) async {
+            await windowManager.setPreventClose(false);
+            await windowManager.close();
+          },
+        ),
+      ]);
+      await _systemTray.setContextMenu(menu);
+      print('Context menu set');
+
+      _systemTray.registerSystemTrayEventHandler((eventName) async {
+        if (eventName == kSystemTrayEventClick ||
+            eventName == kSystemTrayEventDoubleClick) {
           await windowManager.show();
           await windowManager.focus();
-        },
-      ),
-      MenuSeparator(),
-      MenuItemLabel(
-        label: 'Quit',
-        onClicked: (_) async {
-          await windowManager.setPreventClose(false);
-          await windowManager.close();
-        },
-      ),
-    ]);
-    await systemTray.setContextMenu(menu);
-
-    systemTray.registerSystemTrayEventHandler((eventName) async {
-      if (eventName == kSystemTrayEventClick ||
-          eventName == kSystemTrayEventDoubleClick) {
-        await windowManager.show();
-        await windowManager.focus();
-      }
-    });
+        } else if (eventName == kSystemTrayEventRightClick) {
+          await _systemTray.popUpContextMenu();
+        }
+      });
+      print('Event handler registered');
+    } catch (e) {
+      print('Tray error: $e');
+    }
   }
 
   // Close-Button goes to tray instead of closing the app

@@ -17,15 +17,19 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   @override
   void initState() {
     super.initState();
-    _checkFirstLaunch();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkFirstLaunch();
+    });
   }
 
   Future<void> _checkFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
+    //await prefs.setBool('has_launched', false); // debug reset
     final hasLaunched = prefs.getBool('has_launched') ?? false;
 
     if (!hasLaunched && mounted) {
       await prefs.setBool('has_launched', true);
+
       _showWelcomeDialog();
     }
   }
