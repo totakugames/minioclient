@@ -12,6 +12,8 @@ class TransferTask {
   double progress;
   int totalBytes;
   int transferredBytes;
+  DateTime? startedAt;
+  double speedBytesPerSecond;
   String? errorMessage;
   final DateTime createdAt;
 
@@ -25,6 +27,7 @@ class TransferTask {
     this.progress = 0.0,
     this.totalBytes = 0,
     this.transferredBytes = 0,
+    this.speedBytesPerSecond = 0,
     this.errorMessage,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();

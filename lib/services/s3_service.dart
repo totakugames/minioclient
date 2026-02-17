@@ -64,30 +64,39 @@ class S3Service {
     final objects = <S3Object>[];
     final seenPrefixes = <String>{};
 
-    final stream = _client.listObjects(bucket);
+    final result = await _client.listAllObjects(
+      bucket,
+      prefix: prefix,
+      recursive: false,
+    );
 
-    await for (final result in stream) {
-      // Ordner aus prefixes
-      for (final dirKey in result.prefixes) {
-        if (seenPrefixes.add(dirKey)) {
-          final dirName = dirKey
+    final dyn = result as dynamic;
+
+    // Ordner aus prefixes
+    try {
+      final prefixes = dyn.prefixes as List;
+      for (final dirKey in prefixes) {
+        final key = dirKey.toString();
+        if (seenPrefixes.add(key)) {
+          final dirName = key
               .substring(prefix.length)
               .replaceAll(RegExp(r'/$'), '');
           if (dirName.isNotEmpty) {
-            objects.add(
-              S3Object(key: dirKey, name: dirName, isDirectory: true),
-            );
+            objects.add(S3Object(key: key, name: dirName, isDirectory: true));
           }
         }
       }
+    } catch (_) {}
 
-      // Dateien aus objects
-      for (final obj in result.objects) {
-        final key = obj.key;
+    // Dateien aus objects
+    try {
+      final objs = dyn.objects as List;
+      for (final obj in objs) {
+        final key = (obj as dynamic).key;
         if (key == null || key == prefix || key.isEmpty) continue;
 
         final name = key.substring(prefix.length);
-        if (name.isEmpty) continue;
+        if (name.isEmpty || name == '/') continue;
 
         if (name.endsWith('/')) {
           final dirName = name.substring(0, name.length - 1);
@@ -100,14 +109,14 @@ class S3Service {
               key: key,
               name: name,
               isDirectory: false,
-              size: obj.size,
-              lastModified: obj.lastModified,
-              etag: obj.eTag,
+              size: (obj as dynamic).size,
+              lastModified: (obj as dynamic).lastModified,
+              etag: (obj as dynamic).eTag,
             ),
           );
         }
       }
-    }
+    } catch (_) {}
 
     objects.sort((a, b) {
       if (a.isDirectory && !b.isDirectory) return -1;

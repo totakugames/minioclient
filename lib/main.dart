@@ -31,8 +31,12 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => FileBrowserProvider(s3Service: s3Service),
         ),
-        ChangeNotifierProvider(
+        ChangeNotifierProxyProvider<FileBrowserProvider, TransferProvider>(
           create: (_) => TransferProvider(s3Service: s3Service),
+          update: (_, fileBrowser, transfer) {
+            transfer!.setFileBrowser(fileBrowser);
+            return transfer;
+          },
         ),
       ],
       child: const S3ManagerApp(),

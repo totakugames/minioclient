@@ -4,19 +4,44 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../utils/utils.dart';
 
-class TransferPanel extends StatelessWidget {
+class TransferPanel extends StatefulWidget {
   const TransferPanel({super.key});
+
+  @override
+  State<TransferPanel> createState() => _TransferPanelState();
+}
+
+class _TransferPanelState extends State<TransferPanel> {
+  bool _expanded = false;
+
+  String _formatSpeed(double bytesPerSecond) {
+    if (bytesPerSecond <= 0) return '';
+    if (bytesPerSecond >= 1024 * 1024) {
+      return '${(bytesPerSecond / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+    } else if (bytesPerSecond >= 1024) {
+      return '${(bytesPerSecond / 1024).toStringAsFixed(1)} KB/s';
+    }
+    return '${bytesPerSecond.toStringAsFixed(0)} B/s';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<TransferProvider>(
       builder: (context, transfer, _) {
-        if (transfer.tasks.isEmpty) {
-          return const SizedBox.shrink();
-        }
+        if (transfer.tasks.isEmpty) return const SizedBox.shrink();
+
+        final active = transfer.activeTasks;
+        final allTasks = transfer.tasks;
+        final totalProgress = allTasks.isEmpty
+            ? 1.0
+            : allTasks.fold(0.0, (sum, t) => sum + t.progress) /
+                  allTasks.length;
+        final totalSpeed = active.fold(
+          0.0,
+          (sum, t) => sum + t.speedBytesPerSecond,
+        );
 
         return Container(
-          height: 200,
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             border: Border(
@@ -24,41 +49,127 @@ class TransferPanel extends StatelessWidget {
             ),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.swap_vert, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Transfers (${transfer.activeTasks.length} aktiv)',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    const Spacer(),
-                    if (transfer.completedTasks.isNotEmpty)
-                      TextButton(
-                        onPressed: transfer.clearCompleted,
-                        child: const Text('Abgeschlossene entfernen',
-                            style: TextStyle(fontSize: 12)),
+              // ── Kompakter Header mit Gesamtfortschritt ──
+              InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.swap_vert, size: 18),
+                      const SizedBox(width: 8),
+                      // Gesamtfortschrittsbalken
+                      Expanded(
+                        child: RepaintBoundary(
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0, end: totalProgress),
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            builder: (context, value, _) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        active.isNotEmpty
+                                            ? '${active.length} Transfer${active.length > 1 ? 's' : ''} aktiv'
+                                            : 'Alle Transfers abgeschlossen',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (active.isNotEmpty) ...[
+                                        Text(
+                                          '${(value * 100).toStringAsFixed(0)}%',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF6C63FF),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _formatSpeed(totalSpeed),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.white54,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  if (active.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    LinearProgressIndicator(
+                                      value: value,
+                                      minHeight: 3,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).dividerColor,
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                            Color(0xFF6C63FF),
+                                          ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                  ],
+                      const SizedBox(width: 12),
+                      if (transfer.completedTasks.isNotEmpty)
+                        TextButton(
+                          onPressed: transfer.clearCompleted,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Fertige entfernen',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_up,
+                        size: 18,
+                        color: Colors.white54,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Divider(height: 1),
-              // Task list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: transfer.tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = transfer.tasks[index];
-                    return _TransferItem(task: task);
-                  },
+
+              // ── Aufklappbare Detailliste ──
+              if (_expanded) ...[
+                Divider(height: 1, color: Theme.of(context).dividerColor),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: transfer.tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = transfer.tasks[index];
+                      return _TransferItem(
+                        task: task,
+                        formatSpeed: _formatSpeed,
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         );
@@ -69,8 +180,9 @@ class TransferPanel extends StatelessWidget {
 
 class _TransferItem extends StatelessWidget {
   final TransferTask task;
+  final String Function(double) formatSpeed;
 
-  const _TransferItem({required this.task});
+  const _TransferItem({required this.task, required this.formatSpeed});
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +191,7 @@ class _TransferItem extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            task.type == TransferType.upload
-                ? Icons.upload
-                : Icons.download,
+            task.type == TransferType.upload ? Icons.upload : Icons.download,
             size: 16,
             color: _statusColor,
           ),
@@ -90,10 +200,33 @@ class _TransferItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  task.fileName,
-                  style: const TextStyle(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        task.fileName,
+                        style: const TextStyle(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (task.status == TransferStatus.inProgress) ...[
+                      Text(
+                        '${(task.progress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF6C63FF),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        formatSpeed(task.speedBytesPerSecond),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
                 if (task.status == TransferStatus.inProgress)
@@ -101,12 +234,17 @@ class _TransferItem extends StatelessWidget {
                     value: task.progress,
                     minHeight: 3,
                     backgroundColor: Theme.of(context).dividerColor,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF6C63FF),
+                    ),
                   ),
                 if (task.status == TransferStatus.failed)
                   Text(
                     task.errorMessage ?? 'Fehler',
                     style: const TextStyle(
-                        fontSize: 10, color: Color(0xFFFF6B6B)),
+                      fontSize: 10,
+                      color: Color(0xFFFF6B6B),
+                    ),
                   ),
               ],
             ),

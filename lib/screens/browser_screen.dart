@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:minio_desktop_client/models/s3_object.dart';
 import 'package:provider/provider.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import '../providers/providers.dart';
@@ -37,7 +38,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildTopBar(BuildContext context) {
     final conn = context.watch<ConnectionProvider>();
-    final browser = context.watch<FileBrowserProvider>();
+    final browser = context.read<FileBrowserProvider>();
 
     return Container(
       height: 48,
@@ -90,161 +91,214 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _buildBreadcrumbs(BuildContext context) {
-    final browser = context.watch<FileBrowserProvider>();
-
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          // Back button
-          if (browser.isInBucket)
-            InkWell(
-              onTap: browser.isInSubdirectory
-                  ? () => browser.goUp()
-                  : () => browser.goToBucketList(),
-              child: const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: Icon(Icons.arrow_back, size: 18),
-              ),
-            ),
-          // Breadcrumb path
-          InkWell(
-            onTap: () => browser.goToBucketList(),
-            child: const Text('Buckets',
-                style: TextStyle(fontSize: 12, color: Colors.white54)),
-          ),
-          if (browser.currentBucket != null) ...[
-            const Text(' / ',
-                style: TextStyle(fontSize: 12, color: Colors.white24)),
-            InkWell(
-              onTap: () => browser.openBucket(browser.currentBucket!),
-              child: Text(
-                browser.currentBucket!,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: browser.pathSegments.isEmpty
-                      ? Colors.white
-                      : Colors.white54,
-                  fontWeight: browser.pathSegments.isEmpty
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+    return Selector<
+      FileBrowserProvider,
+      ({
+        String? currentBucket,
+        List<String> pathSegments,
+        bool isInBucket,
+        bool isInSubdirectory,
+      })
+    >(
+      selector: (_, b) => (
+        currentBucket: b.currentBucket,
+        pathSegments: b.pathSegments,
+        isInBucket: b.isInBucket,
+        isInSubdirectory: b.isInSubdirectory,
+      ),
+      builder: (context, state, _) {
+        final browser = context.read<FileBrowserProvider>();
+        return Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              if (state.isInBucket)
+                InkWell(
+                  onTap: state.isInSubdirectory
+                      ? () => browser.goUp()
+                      : () => browser.goToBucketList(),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.arrow_back, size: 18),
+                  ),
+                ),
+              InkWell(
+                onTap: () => browser.goToBucketList(),
+                child: const Text(
+                  'Buckets',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
                 ),
               ),
-            ),
-            ...browser.pathSegments.asMap().entries.map((entry) {
-              final isLast = entry.key == browser.pathSegments.length - 1;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(' / ',
-                      style: TextStyle(fontSize: 12, color: Colors.white24)),
-                  InkWell(
-                    onTap: isLast
-                        ? null
-                        : () => browser.navigateToSegment(entry.key),
-                    child: Text(
-                      entry.value,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isLast ? Colors.white : Colors.white54,
-                        fontWeight:
-                            isLast ? FontWeight.w600 : FontWeight.normal,
-                      ),
+              if (state.currentBucket != null) ...[
+                const Text(
+                  ' / ',
+                  style: TextStyle(fontSize: 12, color: Colors.white24),
+                ),
+                InkWell(
+                  onTap: () => browser.openBucket(state.currentBucket!),
+                  child: Text(
+                    state.currentBucket!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: state.pathSegments.isEmpty
+                          ? Colors.white
+                          : Colors.white54,
+                      fontWeight: state.pathSegments.isEmpty
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
-                ],
-              );
-            }),
-          ],
-        ],
-      ),
+                ),
+                ...state.pathSegments.asMap().entries.map((entry) {
+                  final isLast = entry.key == state.pathSegments.length - 1;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        ' / ',
+                        style: TextStyle(fontSize: 12, color: Colors.white24),
+                      ),
+                      InkWell(
+                        onTap: isLast
+                            ? null
+                            : () => browser.navigateToSegment(entry.key),
+                        child: Text(
+                          entry.value,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isLast ? Colors.white : Colors.white54,
+                            fontWeight: isLast
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildFileArea(BuildContext context) {
-    final browser = context.watch<FileBrowserProvider>();
+    return Selector<
+      FileBrowserProvider,
+      ({bool isLoading, String? error, bool isInBucket})
+    >(
+      selector: (_, b) =>
+          (isLoading: b.isLoading, error: b.error, isInBucket: b.isInBucket),
+      builder: (context, state, _) {
+        if (state.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    if (browser.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (browser.error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Color(0xFFFF6B6B)),
-            const SizedBox(height: 16),
-            Text(browser.error!, style: const TextStyle(color: Colors.white54)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => browser.refresh(),
-              child: const Text('Erneut versuchen'),
+        if (state.error != null) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Color(0xFFFF6B6B),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  state.error!,
+                  style: const TextStyle(color: Colors.white54),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () =>
+                      context.read<FileBrowserProvider>().refresh(),
+                  child: const Text('Erneut versuchen'),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    // Bucket list
-    if (!browser.isInBucket) {
-      return _buildBucketList(context, browser);
-    }
+        if (!state.isInBucket) {
+          return _buildBucketList(context, context.read<FileBrowserProvider>());
+        }
 
-    // File list with drag & drop
-    return DropTarget(
-      onDragEntered: (_) => setState(() => _isDragging = true),
-      onDragExited: (_) => setState(() => _isDragging = false),
-      onDragDone: (details) {
-        setState(() => _isDragging = false);
-        final paths = details.files.map((f) => f.path).toList();
-        context.read<TransferProvider>().uploadDroppedFiles(
+        return DropTarget(
+          onDragEntered: (_) => setState(() => _isDragging = true),
+          onDragExited: (_) => setState(() => _isDragging = false),
+          onDragDone: (details) {
+            setState(() => _isDragging = false);
+            final browser = context.read<FileBrowserProvider>();
+            final paths = details.files.map((f) => f.path).toList();
+            context.read<TransferProvider>().uploadDroppedFiles(
               bucket: browser.currentBucket!,
               prefix: browser.currentPrefix,
               filePaths: paths,
             );
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          border: _isDragging
-              ? Border.all(color: const Color(0xFF6C63FF), width: 2)
-              : null,
-          color: _isDragging
-              ? const Color(0xFF6C63FF).withOpacity(0.05)
-              : null,
-        ),
-        child: browser.objects.isEmpty
-            ? _buildEmptyState(context)
-            : ListView.builder(
-                itemCount: browser.objects.length,
-                itemBuilder: (context, index) {
-                  final obj = browser.objects[index];
-                  return FileListItem(
-                    object: obj,
-                    onTap: () {
-                      if (obj.isDirectory) {
-                        browser.openDirectory(obj.key);
-                      }
-                    },
-                    onDownload: obj.isDirectory
-                        ? () => context.read<TransferProvider>().downloadDirectory(
-                              bucket: browser.currentBucket!,
-                              prefix: obj.key,
-                              dirName: obj.name,
-                            )
-                        : () => context.read<TransferProvider>().downloadFile(
-                              bucket: browser.currentBucket!,
-                              key: obj.key,
-                              fileName: obj.name,
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              border: _isDragging
+                  ? Border.all(color: const Color(0xFF6C63FF), width: 2)
+                  : null,
+              color: _isDragging
+                  ? const Color(0xFF6C63FF).withOpacity(0.05)
+                  : null,
+            ),
+            child: Selector<FileBrowserProvider, List<S3Object>>(
+              selector: (_, b) => b.objects,
+              builder: (context, objects, _) {
+                return objects.isEmpty
+                    ? _buildEmptyState(context)
+                    : ListView.builder(
+                        itemCount: objects.length,
+                        itemBuilder: (context, index) {
+                          final obj = objects[index];
+                          return RepaintBoundary(
+                            child: FileListItem(
+                              object: obj,
+                              onTap: () {
+                                if (obj.isDirectory) {
+                                  context
+                                      .read<FileBrowserProvider>()
+                                      .openDirectory(obj.key);
+                                }
+                              },
+                              onDownload: obj.isDirectory
+                                  ? () => context
+                                        .read<TransferProvider>()
+                                        .downloadDirectory(
+                                          bucket: context
+                                              .read<FileBrowserProvider>()
+                                              .currentBucket!,
+                                          prefix: obj.key,
+                                          dirName: obj.name,
+                                        )
+                                  : () => context
+                                        .read<TransferProvider>()
+                                        .downloadFile(
+                                          bucket: context
+                                              .read<FileBrowserProvider>()
+                                              .currentBucket!,
+                                          key: obj.key,
+                                          fileName: obj.name,
+                                        ),
+                              onDelete: () => _confirmDelete(context, obj),
                             ),
-                    onDelete: () => _confirmDelete(context, obj),
-                  );
-                },
-              ),
-      ),
+                          );
+                        },
+                      );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -256,8 +310,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
           children: [
             const Icon(Icons.inbox, size: 48, color: Colors.white24),
             const SizedBox(height: 16),
-            const Text('Keine Buckets vorhanden',
-                style: TextStyle(color: Colors.white54)),
+            const Text(
+              'Keine Buckets vorhanden',
+              style: TextStyle(color: Colors.white54),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: const Icon(Icons.add),
@@ -271,13 +327,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
     return ListView(
       children: [
-        ...browser.buckets.map((bucket) => ListTile(
-              leading: const Icon(Icons.storage,
-                  color: Color(0xFF6C63FF), size: 22),
-              title: Text(bucket),
-              trailing: const Icon(Icons.chevron_right, size: 18),
-              onTap: () => browser.openBucket(bucket),
-            )),
+        ...browser.buckets.map(
+          (bucket) => ListTile(
+            leading: const Icon(
+              Icons.storage,
+              color: Color(0xFF6C63FF),
+              size: 22,
+            ),
+            title: Text(bucket),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: () => browser.openBucket(bucket),
+          ),
+        ),
       ],
     );
   }
@@ -333,9 +394,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<void> _uploadFiles(BuildContext context) async {
     final browser = context.read<FileBrowserProvider>();
     context.read<TransferProvider>().pickAndUploadFiles(
-          bucket: browser.currentBucket!,
-          prefix: browser.currentPrefix,
-        );
+      bucket: browser.currentBucket!,
+      prefix: browser.currentPrefix,
+    );
   }
 
   Future<void> _confirmDelete(BuildContext context, dynamic obj) async {

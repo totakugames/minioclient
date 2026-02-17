@@ -1,15 +1,22 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:minio_desktop_client/providers/file_browser_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/models.dart';
 import '../services/services.dart';
 
 class TransferProvider extends ChangeNotifier {
   final S3Service _s3Service;
+  FileBrowserProvider? _fileBrowser;
+
+  void setFileBrowser(FileBrowserProvider fileBrowser) {
+    _fileBrowser = fileBrowser;
+  }
 
   final List<TransferTask> _tasks = [];
   bool _isProcessing = false;
+  DateTime? _lastNotify;
 
   TransferProvider({required S3Service s3Service}) : _s3Service = s3Service;
 
@@ -40,6 +47,15 @@ class TransferProvider extends ChangeNotifier {
       if (file.path == null) continue;
 
       final remotePath = '$prefix${file.name}';
+
+      final alreadyExists = _tasks.any(
+        (t) =>
+            t.remotePath == remotePath &&
+            t.status != TransferStatus.failed &&
+            t.status != TransferStatus.cancelled,
+      );
+      if (alreadyExists) continue;
+
       final task = TransferTask(
         id: '${DateTime.now().millisecondsSinceEpoch}_${file.name}',
         localPath: file.path!,
@@ -48,12 +64,20 @@ class TransferProvider extends ChangeNotifier {
         type: TransferType.upload,
         totalBytes: file.size,
       );
-
       _tasks.insert(0, task);
     }
 
     notifyListeners();
     _processQueue();
+  }
+
+  void _throttledNotify() {
+    final now = DateTime.now();
+    if (_lastNotify == null ||
+        now.difference(_lastNotify!).inMilliseconds > 500) {
+      _lastNotify = now;
+      notifyListeners();
+    }
   }
 
   /// Upload files from drag & drop
@@ -67,7 +91,6 @@ class TransferProvider extends ChangeNotifier {
       final isDir = await FileSystemEntity.isDirectory(path);
 
       if (isDir) {
-        // Queue directory upload
         final dirName = p.basename(path);
         final dir = Directory(path);
         final files = await dir
@@ -78,9 +101,19 @@ class TransferProvider extends ChangeNotifier {
 
         for (final f in files) {
           final relativePath = p.relative(f.path, from: path);
-          final remotePath =
-              '$prefix$dirName/$relativePath'.replaceAll('\\', '/');
+          final remotePath = '$prefix$dirName/$relativePath'.replaceAll(
+            '\\',
+            '/',
+          );
           final stat = await f.stat();
+
+          final alreadyExists = _tasks.any(
+            (t) =>
+                t.remotePath == remotePath &&
+                t.status != TransferStatus.failed &&
+                t.status != TransferStatus.cancelled,
+          );
+          if (alreadyExists) continue;
 
           final task = TransferTask(
             id: '${DateTime.now().millisecondsSinceEpoch}_${f.path}',
@@ -96,6 +129,14 @@ class TransferProvider extends ChangeNotifier {
         final stat = await file.stat();
         final fileName = p.basename(path);
         final remotePath = '$prefix$fileName';
+
+        final alreadyExists = _tasks.any(
+          (t) =>
+              t.remotePath == remotePath &&
+              t.status != TransferStatus.failed &&
+              t.status != TransferStatus.cancelled,
+        );
+        if (alreadyExists) continue;
 
         final task = TransferTask(
           id: '${DateTime.now().millisecondsSinceEpoch}_$fileName',
@@ -171,7 +212,10 @@ class TransferProvider extends ChangeNotifier {
 
   void clearCompleted() {
     _tasks.removeWhere(
-        (t) => t.status == TransferStatus.completed || t.status == TransferStatus.failed);
+      (t) =>
+          t.status == TransferStatus.completed ||
+          t.status == TransferStatus.failed,
+    );
     notifyListeners();
   }
 
@@ -197,6 +241,7 @@ class TransferProvider extends ChangeNotifier {
 
       try {
         if (task.type == TransferType.upload) {
+          task.startedAt = DateTime.now();
           await _s3Service.uploadFile(
             task.bucket,
             task.remotePath,
@@ -205,11 +250,20 @@ class TransferProvider extends ChangeNotifier {
               task.transferredBytes = transferred;
               task.totalBytes = total;
               task.progress = total > 0 ? transferred / total : 0;
-              notifyListeners();
+              if (task.startedAt != null) {
+                final elapsed =
+                    DateTime.now().difference(task.startedAt!).inMilliseconds /
+                    1000;
+                if (elapsed > 0) {
+                  task.speedBytesPerSecond = transferred / elapsed;
+                }
+              }
+              _throttledNotify();
+              //notifyListeners();
             },
           );
         } else {
-          // Check if it's a directory download
+          task.startedAt = DateTime.now();
           if (task.remotePath.endsWith('/')) {
             await _s3Service.downloadDirectory(
               task.bucket,
@@ -225,7 +279,18 @@ class TransferProvider extends ChangeNotifier {
                 task.transferredBytes = transferred;
                 task.totalBytes = total;
                 task.progress = total > 0 ? transferred / total : 0;
-                notifyListeners();
+                if (task.startedAt != null) {
+                  final elapsed =
+                      DateTime.now()
+                          .difference(task.startedAt!)
+                          .inMilliseconds /
+                      1000;
+                  if (elapsed > 0) {
+                    task.speedBytesPerSecond = transferred / elapsed;
+                  }
+                }
+                _throttledNotify();
+                //notifyListeners();
               },
             );
           }
@@ -242,5 +307,6 @@ class TransferProvider extends ChangeNotifier {
     }
 
     _isProcessing = false;
+    _fileBrowser?.refresh();
   }
 }
