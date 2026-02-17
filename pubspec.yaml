@@ -1,0 +1,26 @@
+name: totaku_asset_manager
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  desktop_drop: ^0.7.0
+  file_picker: ^10.3.10
+  filesize: ^2.0.1
+  flutter:
+    sdk: flutter
+  minio: ^3.5.8
+  path: ^1.9.1
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
