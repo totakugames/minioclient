@@ -15,10 +15,10 @@ Designed as a simple, modern alternative to the MinIO Console — especially for
 - **Cross-Platform** — Runs on Windows, macOS, and Linux
 
 ## Screenshots
-<p align="center>
-   <img width="600" alt="start screen" src="https://github.com/user-attachments/assets/da7829c0-66de-4731-b833-2500ffc48a4d" />
-   <img width="600" alt="login" src="https://github.com/user-attachments/assets/fb020027-a36b-4cdc-a1d7-64e7b9879ded" />
-
+<p align="center">
+   <img width="400" alt="start screen" src="https://github.com/user-attachments/assets/da7829c0-66de-4731-b833-2500ffc48a4d" />
+   &nbsp;&nbsp;&nbsp;
+   <img width="400" alt="login" src="https://github.com/user-attachments/assets/fb020027-a36b-4cdc-a1d7-64e7b9879ded" />
 </p>
 
 
