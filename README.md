@@ -1,107 +1,114 @@
-# Totaku Asset Manager
+# MinIO Desktop Client
 
-Kleiner S3/MinIO Asset Manager für Game Development Teams.
-Gebaut mit Flutter für Windows, macOS und Linux.
+A lightweight, open-source S3/MinIO desktop client built with Flutter.
+Designed as a simple, modern alternative to the MinIO Console — especially for teams that need an easy way to browse, upload, and download files.
 
 ## Features
 
-- **Verbindungsprofile** — Mehrere MinIO/S3-Server speichern und verwalten
-- **File Browser** — Ordnerstruktur durchsuchen mit Breadcrumb-Navigation
-- **Drag & Drop Upload** — Dateien und Ordner einfach reinziehen
-- **Download** — Einzelne Dateien oder ganze Ordner herunterladen
-- **Transfer Queue** — Upload/Download-Fortschritt in Echtzeit
-- **Dark Theme** — Modernes, augenfreundliches UI
-- **Asset-Typ-Icons** — Erkennt automatisch Bilder, Audio, 3D-Modelle, Unity-Assets etc.
+- **Connection Profiles** — Save and manage multiple S3/MinIO server connections
+- **File Browser** — Navigate buckets and folders with breadcrumb navigation
+- **Drag & Drop Upload** — Drop files and folders directly into the app
+- **Download** — Download individual files or entire directories
+- **Transfer Queue** — Real-time progress tracking for all uploads and downloads
+- **Smart File Icons** — Automatically recognizes images, audio, 3D models, and more
+- **Dark Theme** — Clean, modern interface
+- **Cross-Platform** — Runs on Windows, macOS, and Linux
 
-## Setup
+## Screenshots
 
-### Voraussetzungen
+_Coming soon_
+
+## Getting Started
+
+### Prerequisites
 - Flutter SDK >= 3.6.0
-- Für Windows: Visual Studio mit C++ Desktop-Workload
-- Für macOS: Xcode
-- Für Linux: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`
+- **Windows:** Visual Studio with C++ Desktop workload
+- **macOS:** Xcode
+- **Linux:** `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`
 
 ### Installation
 
 ```bash
-# Repo klonen
-git clone <your-repo-url>
-cd totaku_asset_manager
+git clone https://github.com/totakugames/totakuassetmanager.git
+cd totakuassetmanager
 
-# Dependencies installieren
 flutter pub get
 
-# Desktop-Support aktivieren (falls noch nicht)
+# Enable desktop support (if not already)
 flutter config --enable-windows-desktop
 flutter config --enable-macos-desktop
 flutter config --enable-linux-desktop
 
-# App starten
-flutter run -d windows   # oder macos / linux
+# Run
+flutter run -d windows   # or macos / linux
 ```
 
 ### Build
 
 ```bash
-# Windows
-flutter build windows
-
-# macOS
-flutter build macos
-
-# Linux
-flutter build linux
+flutter build windows   # or macos / linux
 ```
 
-Das fertige Build liegt unter `build/<platform>/`.
+The compiled binary will be in `build/<platform>/`.
 
-## Projektstruktur
+## Usage
+
+1. Launch the app
+2. Click **"New Connection"**
+3. Enter your S3/MinIO details:
+   - **Name:** A label for this connection
+   - **Server:** Your S3 endpoint (e.g. `s3.example.com`)
+   - **Port:** `443` for HTTPS, `9000` for local MinIO
+   - **HTTPS:** Toggle on/off
+   - **Access Key:** Your access key
+   - **Secret Key:** Your secret key
+4. Connect and start browsing
+
+Works with any S3-compatible storage: **MinIO**, **AWS S3**, **Backblaze B2**, **Cloudflare R2**, **DigitalOcean Spaces**, and more.
+
+## Project Structure
 
 ```
 lib/
-├── main.dart                    # Entry Point
-├── models/                      # Datenmodelle
-│   ├── connection_profile.dart  # Verbindungsprofil
-│   ├── s3_object.dart           # S3-Objekt (Datei/Ordner)
-│   └── transfer_task.dart       # Upload/Download-Task
-├── services/                    # Business Logic
-│   ├── s3_service.dart          # MinIO/S3 API-Kommunikation
-│   └── profile_storage_service.dart  # Profil-Persistenz
-├── providers/                   # State Management (Provider)
-│   ├── connection_provider.dart # Verbindungsstatus
-│   ├── file_browser_provider.dart  # Navigation & Dateien
-│   └── transfer_provider.dart   # Transfer-Queue
-├── screens/                     # Screens
-│   ├── connection_screen.dart   # Login / Profilauswahl
-│   └── browser_screen.dart      # Datei-Browser
-├── widgets/                     # Wiederverwendbare Widgets
-│   ├── connection_dialog.dart   # Verbindungs-Dialog
-│   ├── file_list_item.dart      # Datei-Zeile
-│   └── transfer_panel.dart      # Transfer-Fortschritt
-└── utils/                       # Hilfsfunktionen
-    ├── app_theme.dart           # Dark Theme
-    └── file_type_helper.dart    # Datei-Icons & Formatierung
+├── main.dart                        # Entry point
+├── models/                          # Data models
+│   ├── connection_profile.dart      # Server connection profile
+│   ├── s3_object.dart               # S3 object (file/folder)
+│   └── transfer_task.dart           # Upload/download task
+├── services/                        # Core logic
+│   ├── s3_service.dart              # S3 API communication
+│   └── profile_storage_service.dart # Profile persistence
+├── providers/                       # State management (Provider)
+│   ├── connection_provider.dart     # Connection state
+│   ├── file_browser_provider.dart   # Navigation & file listing
+│   └── transfer_provider.dart       # Transfer queue
+├── screens/                         # Screens
+│   ├── connection_screen.dart       # Login / profile selection
+│   └── browser_screen.dart          # File browser
+├── widgets/                         # Reusable widgets
+│   ├── connection_dialog.dart       # Connection dialog
+│   ├── file_list_item.dart          # File row
+│   └── transfer_panel.dart          # Transfer progress
+└── utils/                           # Helpers
+    ├── app_theme.dart               # Dark theme
+    └── file_type_helper.dart        # File icons & formatting
 ```
 
-## Verwendung mit MinIO
+## Roadmap
 
-1. App starten
-2. "Neue Verbindung" klicken
-3. Eingeben:
-   - **Name:** z.B. "Your MinIO"
-   - **Server:** `s3.yourdomain.de`
-   - **Port:** `443`
-   - **HTTPS:** An
-   - **Access Key:** Dein MINIO_ROOT_USER
-   - **Secret Key:** Dein MINIO_ROOT_PASSWORD
-4. Verbinden — fertig!
+- [ ] File preview (images, audio)
+- [ ] Right-click context menu
+- [ ] Multi-select with Shift/Ctrl
+- [ ] Presigned URL sharing
+- [ ] Search within buckets
+- [ ] Grid view with thumbnails
+- [ ] Auto-sync for watched folders
+- [ ] Bucket creation and management
 
-## Nächste Schritte (TODO)
+## Contributing
 
-- [ ] Datei-Vorschau (Bilder, Audio)
-- [ ] Rechtsklick-Kontextmenü
-- [ ] Mehrfachauswahl mit Shift/Ctrl
-- [ ] Presigned URL zum Teilen
-- [ ] Suche innerhalb von Buckets
-- [ ] Grid-Ansicht (Thumbnails)
-- [ ] Auto-Sync für bestimmte Ordner
+Contributions are welcome! Feel free to open issues, submit PRs, or fork the project.
+
+## License
+
+MIT
