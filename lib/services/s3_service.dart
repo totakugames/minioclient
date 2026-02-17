@@ -64,79 +64,51 @@ class S3Service {
     final objects = <S3Object>[];
     final seenPrefixes = <String>{};
 
-    // Use listAllObjects which returns a Future<ListObjectsResult>
-    final result = await _client.listAllObjects(
-      bucket,
-      prefix: prefix,
-      recursive: false,
-    );
+    final stream = _client.listObjects(bucket);
 
-    // Normalize result: some versions of the Minio client return an object
-    // with `contents` and `commonPrefixes`, others return an Iterable of
-    // objects directly. Handle both shapes here.
-    final List<dynamic> contents = <dynamic>[];
-    final List<dynamic> prefixes = <dynamic>[];
+    await for (final result in stream) {
+      // Ordner aus prefixes
+      for (final dirKey in result.prefixes) {
+        if (seenPrefixes.add(dirKey)) {
+          final dirName = dirKey
+              .substring(prefix.length)
+              .replaceAll(RegExp(r'/$'), '');
+          if (dirName.isNotEmpty) {
+            objects.add(
+              S3Object(key: dirKey, name: dirName, isDirectory: true),
+            );
+          }
+        }
+      }
 
-    final dyn = result as dynamic;
-    try {
-      if (dyn.commonPrefixes != null) {
-        prefixes.addAll((dyn.commonPrefixes as Iterable).cast<dynamic>());
-      }
-    } catch (_) {}
-    try {
-      if (dyn.contents != null) {
-        contents.addAll((dyn.contents as Iterable).cast<dynamic>());
-      }
-    } catch (_) {}
+      // Dateien aus objects
+      for (final obj in result.objects) {
+        final key = obj.key;
+        if (key == null || key == prefix || key.isEmpty) continue;
 
-    // Handle prefixes (directories)
-    for (final cp in prefixes) {
-      String dirKey = '';
-      try {
-        dirKey = (cp as dynamic).prefix ?? cp.toString();
-      } catch (_) {
-        dirKey = cp.toString();
-      }
-      if (dirKey.isEmpty) continue;
-      if (seenPrefixes.add(dirKey)) {
-        final dirName = dirKey
-            .substring(prefix.length)
-            .replaceAll(RegExp(r'/$'), '');
-        if (dirName.isNotEmpty) {
-          objects.add(S3Object(key: dirKey, name: dirName, isDirectory: true));
+        final name = key.substring(prefix.length);
+        if (name.isEmpty) continue;
+
+        if (name.endsWith('/')) {
+          final dirName = name.substring(0, name.length - 1);
+          if (dirName.isNotEmpty && seenPrefixes.add(key)) {
+            objects.add(S3Object(key: key, name: dirName, isDirectory: true));
+          }
+        } else {
+          objects.add(
+            S3Object(
+              key: key,
+              name: name,
+              isDirectory: false,
+              size: obj.size,
+              lastModified: obj.lastModified,
+              etag: obj.eTag,
+            ),
+          );
         }
       }
     }
 
-    // Handle files from contents (or from iterable result)
-    for (final obj in contents) {
-      final key = (obj as dynamic).key ?? obj.toString();
-      if (key == null || key == prefix || key.isEmpty) continue;
-
-      final name = key.substring(prefix.length);
-      if (name.isEmpty) continue;
-
-      // Directory marker (key ending with /)
-      if (name.endsWith('/')) {
-        final dirName = name.substring(0, name.length - 1);
-        if (dirName.isNotEmpty && seenPrefixes.add(key)) {
-          objects.add(S3Object(key: key, name: dirName, isDirectory: true));
-        }
-      } else {
-        objects.add(
-          S3Object(
-            key: key,
-            name: name,
-            isDirectory: false,
-            size: (obj as dynamic).size,
-            lastModified: (obj as dynamic).lastModified,
-            etag: (obj as dynamic).eTag ?? (obj as dynamic).etag,
-          ),
-        );
-      }
-    }
-
-    // Sort: directories first, then alphabetically
     objects.sort((a, b) {
       if (a.isDirectory && !b.isDirectory) return -1;
       if (!a.isDirectory && b.isDirectory) return 1;
@@ -162,22 +134,17 @@ class S3Service {
       recursive: true,
     );
 
-    final List<dynamic> contents = <dynamic>[];
-    try {
-      final dyn = result as dynamic;
-      if (dyn.contents != null) {
-        contents.addAll((dyn.contents as Iterable).cast<dynamic>());
-      }
-    } catch (_) {}
+    final dyn = result as dynamic;
 
-    for (final obj in contents) {
-      try {
+    try {
+      final objects = dyn.objects as List;
+      for (final obj in objects) {
         final key = (obj as dynamic).key;
         if (key != null) {
           await _client.removeObject(bucket, key);
         }
-      } catch (_) {}
-    }
+      }
+    } catch (e) {}
   }
 
   // ── Upload / Download ────────────────────────────────────
@@ -330,4 +297,14 @@ class S3Service {
       expires: expirySeconds,
     );
   }
+
+  /*
+  Future<void> debugListObjects(String bucket) async {
+    final stream = _client.listObjects(bucket);
+    await for (final obj in stream) {
+      print('type: ${obj.runtimeType}');
+      print('toString: $obj');
+    }
+  }
+    */
 }

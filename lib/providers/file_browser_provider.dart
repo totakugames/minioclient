@@ -15,14 +15,10 @@ class FileBrowserProvider extends ChangeNotifier {
   // Navigation history for breadcrumbs
   List<String> get pathSegments {
     if (_currentPrefix.isEmpty) return [];
-    return _currentPrefix
-        .split('/')
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return _currentPrefix.split('/').where((s) => s.isNotEmpty).toList();
   }
 
-  FileBrowserProvider({required S3Service s3Service})
-      : _s3Service = s3Service;
+  FileBrowserProvider({required S3Service s3Service}) : _s3Service = s3Service;
 
   // ── Getters ──────────────────────────────────────────────
 
@@ -70,6 +66,7 @@ class FileBrowserProvider extends ChangeNotifier {
   Future<void> openBucket(String bucket) async {
     _currentBucket = bucket;
     _currentPrefix = '';
+    // await _s3Service.debugListObjects(bucket); // Debug-Ausgab
     await _loadObjects();
   }
 
@@ -85,8 +82,7 @@ class FileBrowserProvider extends ChangeNotifier {
       // Go to bucket root
       _currentPrefix = '';
     } else if (segmentIndex < segments.length) {
-      _currentPrefix =
-          '${segments.sublist(0, segmentIndex + 1).join('/')}/';
+      _currentPrefix = '${segments.sublist(0, segmentIndex + 1).join('/')}/';
     }
     await _loadObjects();
   }
@@ -97,8 +93,7 @@ class FileBrowserProvider extends ChangeNotifier {
     if (segments.length <= 1) {
       _currentPrefix = '';
     } else {
-      _currentPrefix =
-          '${segments.sublist(0, segments.length - 1).join('/')}/';
+      _currentPrefix = '${segments.sublist(0, segments.length - 1).join('/')}/';
     }
     await _loadObjects();
   }

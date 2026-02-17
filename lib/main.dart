@@ -76,12 +76,10 @@ class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
 
   Future<void> _initSystemTray() async {
     try {
-      print('Initializing system tray...');
       await _systemTray.initSystemTray(
         iconPath: _getTrayIconPath(),
         toolTip: 'MinIO Desktop Client',
       );
-      print('System tray initialized successfully');
 
       final menu = Menu();
       await menu.buildFrom([
@@ -102,7 +100,6 @@ class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
         ),
       ]);
       await _systemTray.setContextMenu(menu);
-      print('Context menu set');
 
       _systemTray.registerSystemTrayEventHandler((eventName) async {
         if (eventName == kSystemTrayEventClick ||
@@ -113,10 +110,7 @@ class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
           await _systemTray.popUpContextMenu();
         }
       });
-      print('Event handler registered');
-    } catch (e) {
-      print('Tray error: $e');
-    }
+    } catch (e) {}
   }
 
   // Close-Button goes to tray instead of closing the app
