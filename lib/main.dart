@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/services.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:system_tray/system_tray.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
 import 'utils/utils.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await windowManager.ensureInitialized();
+  await windowManager.setPreventClose(true);
 
   // Create shared service instances
   final s3Service = S3Service();
@@ -28,13 +33,73 @@ void main() {
           create: (_) => TransferProvider(s3Service: s3Service),
         ),
       ],
-      child: const TotakuAssetManagerApp(),
+      child: const S3ManagerApp(),
     ),
   );
 }
 
-class TotakuAssetManagerApp extends StatelessWidget {
-  const TotakuAssetManagerApp({super.key});
+class S3ManagerApp extends StatefulWidget {
+  const S3ManagerApp({super.key});
+
+  @override
+  State<S3ManagerApp> createState() => _S3ManagerAppState();
+}
+
+class _S3ManagerAppState extends State<S3ManagerApp> with WindowListener {
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _initSystemTray();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _initSystemTray() async {
+    final systemTray = SystemTray();
+    await systemTray.initSystemTray(
+      iconPath: 'assets/app_icon.png',
+      toolTip: 'MinIO Desktop Client',
+    );
+
+    final menu = Menu();
+    await menu.buildFrom([
+      MenuItemLabel(
+        label: 'Show',
+        onClicked: (_) async {
+          await windowManager.show();
+          await windowManager.focus();
+        },
+      ),
+      MenuSeparator(),
+      MenuItemLabel(
+        label: 'Quit',
+        onClicked: (_) async {
+          await windowManager.setPreventClose(false);
+          await windowManager.close();
+        },
+      ),
+    ]);
+    await systemTray.setContextMenu(menu);
+
+    systemTray.registerSystemTrayEventHandler((eventName) async {
+      if (eventName == kSystemTrayEventClick ||
+          eventName == kSystemTrayEventDoubleClick) {
+        await windowManager.show();
+        await windowManager.focus();
+      }
+    });
+  }
+
+  // Close-Button goes to tray instead of closing the app
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
+  }
 
   @override
   Widget build(BuildContext context) {
