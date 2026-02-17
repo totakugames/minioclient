@@ -39,7 +39,7 @@ class TotakuAssetManagerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Totaku Asset Manager',
+      title: 'MinIO Desktop Client',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const ConnectionScreen(),

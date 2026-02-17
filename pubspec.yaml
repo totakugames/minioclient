@@ -1,5 +1,5 @@
-name: totaku_asset_manager
-description: "A new Flutter project."
+name: minio_desktop_client
+description: "A lightweight, open-source S3/MinIO desktop client."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -16,6 +16,7 @@ dependencies:
   path: ^1.9.1
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

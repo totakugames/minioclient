@@ -60,7 +60,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   controller: _nameController,
                   decoration: const InputDecoration(
                     labelText: 'Name',
-                    hintText: 'z.B. Totaku MinIO',
+                    hintText: 'z.B. My MinIO Server',
                   ),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Name eingeben' : null,
@@ -70,7 +70,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   controller: _endpointController,
                   decoration: const InputDecoration(
                     labelText: 'Server / Endpoint',
-                    hintText: 'z.B. s3.totakugames.studio',
+                    hintText: 'z.B. s3.myserver.com',
                   ),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Endpoint eingeben' : null,
@@ -105,9 +105,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _accessKeyController,
-                  decoration: const InputDecoration(
-                    labelText: 'Access Key',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Access Key'),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Access Key eingeben' : null,
                 ),
@@ -118,9 +116,11 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   decoration: InputDecoration(
                     labelText: 'Secret Key',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureSecret
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                        _obscureSecret
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: () =>
                           setState(() => _obscureSecret = !_obscureSecret),
                     ),
@@ -150,7 +150,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final profile = ConnectionProfile(
-      id: widget.existingProfile?.id ??
+      id:
+          widget.existingProfile?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       endpoint: _endpointController.text.trim(),
