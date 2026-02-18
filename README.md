@@ -1,18 +1,18 @@
 # MinIO Desktop Client
 
-A lightweight, open-source S3/MinIO desktop client built with Flutter.
+A open-source S3/MinIO desktop client built with Flutter.
 Designed as a simple, modern alternative to the MinIO Console — especially for teams that need an easy way to browse, upload, and download files.
 
 ## Features
 
-- **Connection Profiles** — Save and manage multiple S3/MinIO server connections
-- **File Browser** — Navigate buckets and folders with breadcrumb navigation
-- **Drag & Drop Upload** — Drop files and folders directly into the app
-- **Download** — Download individual files or entire directories
-- **Transfer Queue** — Real-time progress tracking for all uploads and downloads
-- **Smart File Icons** — Automatically recognizes images, audio, 3D models, and more
-- **Dark Theme** — Clean, modern interface
-- **Cross-Platform** — Runs on Windows, macOS, and Linux
+- **Connection Profiles** Save and manage multiple S3/MinIO server connections
+- **File Browser** Navigate buckets and folders with breadcrumb navigation
+- **Drag & Drop Upload** Drop files and folders directly into the app
+- **Download** Download individual files or entire directories
+- **Transfer Queue** Real-time progress tracking for all uploads and downloads
+- **Smart File Icons** Automatically recognizes images, audio, 3D models, and more
+- **Dark Theme** Clean, modern interface
+- **Cross-Platform** Runs on Windows, macOS, and Linux
 
 ## Screenshots
 <p align="center">
